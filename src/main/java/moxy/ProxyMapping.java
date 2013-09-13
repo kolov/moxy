@@ -10,6 +10,15 @@ import java.util.regex.Pattern;
 public class ProxyMapping {
 
 
+    public Destination map(String url) {
+        for (ProxyMapping.Entry entry : entries) {
+            if (entry.regex.matcher(url).matches()) {
+               return entry.destination;
+            }
+        }
+        return null;
+    }
+
     public static class Destination {
         public String host;
         public int port;

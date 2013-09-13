@@ -7,25 +7,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
- * User: M01I187
- * Date: 11-9-13
- * Time: 17:56
- * To change this template use File | Settings | File Templates.
  */
 public class Responder implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Responder.class);
 
     private Socket conn;
-    private List<ProxyMapping.Entry> entries;
+    private ProxySettings settings;
 
-    public Responder(ProxyMapping pc, Socket conn) {
+    public Responder(ProxySettings pc, Socket conn) {
         this.conn = conn;
-        this.entries = pc.getEntries();
+        this.settings = pc;
     }
 
     @Override
@@ -34,7 +29,6 @@ public class Responder implements Runnable {
             _run();
         } catch (Exception e) {
             LOG.error("Thread closed by exception: ", e);
-
         }
     }
 
@@ -43,32 +37,25 @@ public class Responder implements Runnable {
         InputStream is = conn.getInputStream();
 
 
-        for (; ; ) {
-            String line = HttpHelper.readLine(is);
-            if (line == null || line.length() == 0) {
-                break;
-            }
-            String url = HttpHelper.getUrl(line);
-            if (url == null) {
-                LOG.error("URL null grom[{}]", url);
-            }
-            boolean matched = false;
-            for (ProxyMapping.Entry entry : entries) {
-                LOG.debug("Going to match {}", url);
-                if (entry.regex.matcher(url).matches()) {
-                    LOG.debug("Matched {} -> {}:{}", new Object[]{url, entry.destination.host,
-                            entry.destination.port});
-                    forward(entry.destination.host, entry.destination.port, line, url, is, conn);
-                    matched = true;
-                    break;
-                }
-            }
-            // no match
-            if (!matched) {
-                LOG.error("No match for {}", url);
-            }
-
+        String line = HttpHelper.readLine(is);
+        if (line == null || line.length() == 0) {
+            return;
         }
+        String url = HttpHelper.getUrl(line);
+
+        LOG.error("URL from [{}] -> [{}]", line, url);
+
+        LOG.debug("Going to match [{}]", url);
+        ProxyMapping.Destination destination = settings.getMapping().map(url);
+        if (destination != null) {
+            LOG.debug("Matched {} -> {}:{}", new Object[]{url, destination.host,
+                    destination.port});
+            forward(destination.host, destination.port, line, url, is, conn);
+        } else {
+            LOG.error("No match for {}", url);
+        }
+
+
     }
 
     private void forward(String host, int port, String line, String url, InputStream is,
@@ -89,7 +76,7 @@ public class Responder implements Runnable {
         try {
             // request to host
             sendRequest(host, line, url, is, secondClient);
-            new Thread(this).start();
+            settings.getExecutor().execute(new Responder(settings, conn));
             forwardResponse(secondClient.getInputStream(), firstConn.getOutputStream());
             LOG.debug("Finished {}", url);
         } finally {
