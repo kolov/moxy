@@ -32,8 +32,8 @@ public class ProxyConfigurationTest {
 
     }
 
-    private List<ProxyConfiguration.Entry> getEntries(String content) throws IOException {
-        ProxyConfiguration pc = new ProxyConfiguration();
+    private List<ProxyMapping.Entry> getEntries(String content) throws IOException {
+        ProxyMapping pc = new ProxyMapping();
         pc.read(new ByteArrayInputStream(content.getBytes()));
         return pc.getEntries();
     }

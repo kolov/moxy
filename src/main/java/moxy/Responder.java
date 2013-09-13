@@ -21,9 +21,9 @@ public class Responder implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(Responder.class);
 
     private Socket conn;
-    private List<ProxyConfiguration.Entry> entries;
+    private List<ProxyMapping.Entry> entries;
 
-    public Responder(ProxyConfiguration pc, Socket conn) {
+    public Responder(ProxyMapping pc, Socket conn) {
         this.conn = conn;
         this.entries = pc.getEntries();
     }
@@ -44,16 +44,16 @@ public class Responder implements Runnable {
 
 
         for (; ; ) {
-            String line = readLine(is);
+            String line = HttpHelper.readLine(is);
             if (line == null || line.length() == 0) {
                 break;
             }
             String url = HttpHelper.getUrl(line);
-            if( url == null) {
+            if (url == null) {
                 LOG.error("URL null grom[{}]", url);
             }
             boolean matched = false;
-            for (ProxyConfiguration.Entry entry : entries) {
+            for (ProxyMapping.Entry entry : entries) {
                 LOG.debug("Going to match {}", url);
                 if (entry.regex.matcher(url).matches()) {
                     LOG.debug("Matched {} -> {}:{}", new Object[]{url, entry.destination.host,
@@ -75,9 +75,10 @@ public class Responder implements Runnable {
                          Socket firstConn) throws IOException {
         LOG.debug("Start processing  {}  ", url);
         Socket secondClient = null;
+        // open  connection to the needed host
         try {
             secondClient = new Socket(host, port);
-           // secondClient.setSoTimeout(3000);
+            // secondClient.setSoTimeout(3000);
         } catch (IOException e) {
             // can't connect, close existing connection
             LOG.debug(" can't connect to {}:{}, close existing connection.", host, port);
@@ -127,24 +128,11 @@ public class Responder implements Runnable {
         try {
             return clientInput.read(buf, 0, buf.length);
         } catch (java.net.SocketTimeoutException e) {
+            // on timeout, if setSoTimeout was set
             return 0;
         }
     }
 
-    private String readLine(InputStream is) throws IOException {
-        byte[] result = new byte[1024];
-        int c;
-        int pos = 0;
-        for (; ; ) {
-            c = is.read();
-            if (c == -1)
-                break;
-            result[pos++] = (byte) c;
-            if (c == '\n' || c == '\r') {
-                break;
-            }
-        }
-        return new String(result, 0, pos);
-    }
+
 }
 

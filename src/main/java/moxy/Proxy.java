@@ -3,12 +3,16 @@ package moxy;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  */
 public class Proxy {
 
     public static final String MOXY_PROPERTIES = "/moxy.properties";
+
+    ExecutorService executor = Executors.newFixedThreadPool(100);
 
     public static void main(String[] args) throws Exception {
         new Proxy().start();
@@ -21,17 +25,17 @@ public class Proxy {
             System.out.print("Could not locate file " + MOXY_PROPERTIES + " from classpath ");
             return;
         }
-        ProxyConfiguration pc = new ProxyConfiguration();
+        ProxyMapping pc = new ProxyMapping();
         pc.read(res.openStream());
 
-        System.out.print("Starting proxy wit settings:\n");
+        System.out.print("Starting proxy with settings:\n");
         pc.dump(System.out);
 
 
         ServerSocket server = new ServerSocket(47000);
         while (true) {
             Socket conn = server.accept();
-            new Thread(new Responder(pc, conn)).start();
+            executor.execute(new Responder(pc, conn));
         }
     }
 

@@ -6,15 +6,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Created with IntelliJ IDEA.
- * User: M01I187
- * Date: 13-9-13
- * Time: 13:35
- * To change this template use File | Settings | File Templates.
  */
-public class ProxyConfiguration {
-
-
+public class ProxyMapping {
 
 
     public static class Destination {
