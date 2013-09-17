@@ -41,8 +41,7 @@ public class Proxy {
     private ProxyMapping readMapping() throws IOException {
         URL res = getClass().getResource(MOXY_PROPERTIES);
         if( res == null) {
-            System.out.print("Could not locate file " + MOXY_PROPERTIES + " from classpath ");
-            return null;
+            throw new RuntimeException("Could not locate file " + MOXY_PROPERTIES + " from classpath ");
         }
         ProxyMapping pc = new ProxyMapping();
         pc.read(res.openStream());
