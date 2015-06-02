@@ -1,5 +1,8 @@
 package moxy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -7,9 +10,10 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- */
+
 public class Proxy {
+
+    public static final Logger LOG = LoggerFactory.getLogger(Proxy.class);
 
     public static final String MOXY_PROPERTIES = "/moxy.properties";
 
@@ -20,6 +24,7 @@ public class Proxy {
     }
 
     public void start() throws Exception {
+
 
         ProxyMapping mapping = readMapping();
 
@@ -40,8 +45,8 @@ public class Proxy {
 
     private ProxyMapping readMapping() throws IOException {
         URL res = getClass().getResource(MOXY_PROPERTIES);
-        if( res == null) {
-            System.out.print("Could not locate file " + MOXY_PROPERTIES + " from classpath ");
+        if (res == null) {
+            LOG.warn("Could not locate file " + MOXY_PROPERTIES + " from classpath ");
             return null;
         }
         ProxyMapping pc = new ProxyMapping();

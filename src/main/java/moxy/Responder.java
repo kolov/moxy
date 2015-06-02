@@ -3,20 +3,42 @@ package moxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 
-/**
- * Created with IntelliJ IDEA.
- */
+
 public class Responder implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Responder.class);
 
     private Socket conn;
     private ProxySettings settings;
+
+    private static SSLContext SSL_CONTEXT;
+
+    static {
+        try {
+            SSL_CONTEXT = SSLContext.getInstance("SSL");
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509", "SunJSSE");
+            trustManagerFactory.init((KeyStore) null);
+            SSL_CONTEXT.init(new KeyManager[]{},
+                trustManagerFactory.getTrustManagers(),
+                new java.security.SecureRandom());
+        } catch (NoSuchAlgorithmException | KeyManagementException | NoSuchProviderException | KeyStoreException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public Responder(ProxySettings pc, Socket conn) {
         this.conn = conn;
@@ -43,13 +65,13 @@ public class Responder implements Runnable {
         }
         String url = HttpHelper.getUrl(line);
 
-        LOG.error("URL from [{}] -> [{}]", line, url);
+        LOG.debug("URL from [{}] -> [{}]", line, url);
 
         LOG.debug("Going to match [{}]", url);
         ProxyMapping.Destination destination = settings.getMapping().map(url);
         if (destination != null) {
             LOG.debug("Matched {} -> {}:{}", new Object[]{url, destination.host,
-                    destination.port});
+                destination.port});
             forward(destination.host, destination.port, line, url, is, conn);
         } else {
             LOG.error("No match for {}", url);
@@ -64,7 +86,13 @@ public class Responder implements Runnable {
         Socket secondClient = null;
         // open  connection to the needed host
         try {
-            secondClient = new Socket(host, port);
+            if (port == 443) {
+                secondClient = SSL_CONTEXT.getSocketFactory()
+                    .createSocket(host, port);
+            } else {
+                secondClient = new Socket(host, port);
+            }
+
             // secondClient.setSoTimeout(3000);
         } catch (IOException e) {
             // can't connect, close existing connection
@@ -106,6 +134,7 @@ public class Responder implements Runnable {
             if (read < 1) {
                 break;
             }
+
             proxyClientOut.write(buf, 0, read);
         }
         proxyClientOut.flush();
